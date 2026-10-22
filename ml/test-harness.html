@@ -1,0 +1,30 @@
+<pre id="log" style="font:14px monospace;white-space:pre-wrap"></pre>
+<script>
+  const log = (s) => (document.getElementById('log').textContent += s + '\n');
+  const images = ['cat.jpg', 'dog.jpg', 'human.jpg', 'owner.jpg'];
+  async function toBase64(url) {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const c = document.createElement('canvas');
+    const k = 512 / Math.max(img.naturalWidth, img.naturalHeight);
+    c.width = Math.round(img.naturalWidth * k);
+    c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.8).split(',')[1];
+  }
+  let pending = null;
+  window.addEventListener('vetid', async (e) => {
+    const m = e.detail;
+    if (m.type === 'progress') return;
+    log(JSON.stringify(m));
+    if (m.type === 'ready') {
+      for (const name of images) {
+        const b64 = await toBase64('test-images/' + name);
+        await new Promise((r) => { pending = r; window.__vetidClassify(name, b64); });
+      }
+      log('DONE');
+    }
+    if ((m.type === 'result' || m.type === 'error') && pending) { const r = pending; pending = null; r(); }
+  });
+</script>

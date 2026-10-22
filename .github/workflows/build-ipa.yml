@@ -1,0 +1,60 @@
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild ML engine bundle
+        run: npm run build:engine
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Expo prebuild (generate ios/)
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Archive (без подписи)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/VetID.xcworkspace \
+            -scheme VetID \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/VetID.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive | tail -n 80
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/VetID.xcarchive/Products/Applications/VetID.app Payload/
+          zip -qry VetID.ipa Payload
+          ls -lh VetID.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VetID-ipa
+          path: VetID.ipa
+          retention-days: 30

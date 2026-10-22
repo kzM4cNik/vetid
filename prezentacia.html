@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>VetID — защита</title>
+<style>
+  :root {
+    --red: #dc0000;
+    --ink: #141414;
+    --paper: #f4f4f4;
+    --muted: #5c5c5c;
+  }
+  @page { size: 13.333in 7.5in; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #070707; color: var(--ink); font-family: Bahnschrift, "Arial Narrow", "Segoe UI", sans-serif; }
+  button { font: inherit; }
+  .deck { position: fixed; inset: 0; display: grid; place-items: center; }
+  .frame {
+    position: relative;
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
+    background: var(--paper);
+    overflow: hidden;
+  }
+  .slide {
+    container-type: size;
+    position: absolute;
+    inset: 0;
+    background: var(--paper);
+    overflow: hidden;
+    visibility: hidden;
+    perspective: 1600px;
+    color: var(--ink);
+  }
+  .slide.on { visibility: visible; z-index: 2; }
+  .slide.on[data-enter="wipe"] { animation: wipe .62s cubic-bezier(.77, 0, .18, 1) both; }
+  .slide.on.back[data-enter="wipe"] { animation-name: wipeBack; }
+  @keyframes wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes wipeBack { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+
+  .mega {
+    font-weight: 700;
+    font-stretch: extra-condensed;
+    letter-spacing: -0.045em;
+    line-height: .84;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .red { color: var(--red); }
+
+  .top {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 8.5cqh;
+    background: var(--red);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4.2cqi;
+    font-size: 2.15cqi;
+    font-weight: 700;
+    font-stretch: condensed;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+  }
+  .top i { width: 1.1cqi; height: 1.1cqi; border-radius: 50%; background: #fff; display: block; }
+
+  .num {
+    position: absolute;
+    right: 3.6cqi;
+    bottom: 3.2cqh;
+    font-size: 1.7cqi;
+    letter-spacing: .22em;
+    color: rgba(20, 20, 20, .42);
+    z-index: 3;
+  }
+  .on-red .num { color: rgba(20, 20, 20, .45); }
+  .slide:has(.col.ink) .num,
+  .slide:has(.ticket) .num { color: rgba(255,255,255,.78); }
+
+  .say.light { color: #fff; }
+  .say {
+    position: absolute;
+    left: 4.2cqi;
+    bottom: 3.4cqh;
+    font-size: 1.85cqi;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--red);
+    z-index: 3;
+  }
+
+  /* title card */
+  .sheet { position: absolute; inset: 4.2cqi; }
+  .redcard {
+    height: 100%;
+    background: var(--red);
+    color: #fff;
+    border-radius: 2.6cqi;
+    padding: 5.5cqi 4.8cqi 4.2cqi;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+  }
+  .slide.on[data-enter="rise"] .redcard { animation: rise .78s cubic-bezier(.16, 1, .3, 1) both; }
+  .slide.on.back[data-enter="rise"] .redcard { animation-name: riseBack; }
+  @keyframes rise { from { transform: translateY(108%); } to { transform: none; } }
+  @keyframes riseBack { from { transform: translateY(108%); } to { transform: none; } }
+  .redcard .mega { font-size: 20cqi; color: #fff; }
+  .redcard .lead {
+    font-size: 2.5cqi;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    font-weight: 700;
+    opacity: .85;
+  }
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 2cqi;
+    font-size: 2.15cqi;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .meta b { font-size: 2.6cqi; letter-spacing: .16em; font-weight: 700; }
+  .now {
+    font-size: 1.9cqi;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 2.6cqh;
+  }
+
+  /* editorial */
+  .pad { position: absolute; inset: 13cqh 5cqi 10cqh; }
+  .kicker {
+    font-size: 2cqi;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--red);
+    margin-bottom: 1.6cqh;
+  }
+  .split { position: absolute; inset: 8.5cqh 0 0; display: flex; }
+  .col { flex: 1; position: relative; padding: 5.5cqh 4.2cqi 6cqh; display: flex; flex-direction: column; justify-content: center; }
+  .col.ink { background: var(--red); color: #fff; }
+  .col h2 { font-size: 13cqi; }
+  .col p, .stack p { font-size: 2.5cqi; line-height: 1.35; margin: 2cqh 0 0; max-width: 38cqi; color: var(--muted); }
+  .stack { display: flex; flex-direction: column; gap: 2.2cqh; }
+  .stack .line { font-size: 6.4cqi; font-weight: 700; font-stretch: extra-condensed; letter-spacing: -0.04em; text-transform: uppercase; line-height: .9; }
+  .stack .line em { font-style: normal; opacity: .72; }
+  .rule { height: 0.35cqh; background: rgba(255,255,255,.45); margin: 1.4cqh 0; width: 18cqi; }
+
+  .nets { position: absolute; inset: 8.5cqh 0 0; display: grid; grid-template-columns: 1.15fr 0.9cqi 1fr; }
+  .nets .gap { background: var(--red); }
+  .nets article { padding: 6cqh 4.5cqi; display: flex; flex-direction: column; justify-content: center; gap: 4.2cqh; }
+  .nets .mega { font-size: 12.5cqi; }
+  .nets p { font-size: 2.45cqi; line-height: 1.35; color: var(--muted); max-width: 40cqi; margin: 2cqh 0 0; }
+  .idx { font-size: 2cqi; letter-spacing: .18em; color: var(--red); font-weight: 700; }
+  .nets h3 { margin: .6cqh 0 0; font-size: 4.6cqi; font-stretch: condensed; letter-spacing: -0.03em; text-transform: uppercase; }
+  .nets .sub { font-size: 2.35cqi; line-height: 1.35; color: var(--muted); margin-top: 1cqh; max-width: 36cqi; }
+
+  .giant { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 6cqi; }
+  .giant .mega { font-size: 18cqi; }
+  .oh { position: relative; display: inline-block; }
+  .oh::after {
+    content: "";
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    top: 48%;
+    height: 0.055em;
+    background: var(--paper);
+    transform: rotate(-22deg);
+  }
+  .slide.on[data-enter="fly"] .giant .mega { animation: fly .7s cubic-bezier(.16, 1, .3, 1) both; }
+  @keyframes fly { from { transform: translateX(-108%); } to { transform: none; } }
+  .giant p { font-size: 2.8cqi; max-width: 62cqi; color: var(--muted); margin: 2.4cqh 0 0; line-height: 1.3; }
+
+  .half { position: absolute; inset: 8.5cqh 0 0; display: grid; grid-template-columns: 1.15fr .85fr; }
+  .half .copy { padding: 6cqh 4.5cqi; display: flex; flex-direction: column; justify-content: center; }
+  .half h2 { font-size: 12cqi; }
+  .half ul { margin: 2.4cqh 0 0; padding: 0; list-style: none; }
+  .half li { font-size: 2.55cqi; line-height: 1.35; margin: 1.2cqh 0; max-width: 46cqi; }
+  .half li::before { content: ""; display: inline-block; width: 1.3cqi; height: 1.3cqi; background: var(--red); margin-right: 1.2cqi; transform: translateY(.15cqi); }
+  .ticket {
+    background: var(--red);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 5cqh 4cqi;
+  }
+  .ticket .code { font-size: 20cqi; font-weight: 700; font-stretch: extra-condensed; letter-spacing: -0.05em; line-height: .8; }
+  .ticket span { font-size: 2.4cqi; letter-spacing: .16em; text-transform: uppercase; margin-top: 1.6cqh; }
+
+  .stop { position: absolute; inset: 0; display: grid; grid-template-columns: .78fr 1.22fr; }
+  .stop .mark {
+    background: var(--red);
+    color: #fff;
+    display: flex;
+    align-items: flex-end;
+    padding: 6cqh 4cqi;
+    font-size: 14cqi;
+    font-weight: 700;
+    font-stretch: extra-condensed;
+    letter-spacing: -0.05em;
+    line-height: .8;
+    text-transform: uppercase;
+  }
+  .stop .copy { padding: 10cqh 5cqi 8cqh; display: flex; flex-direction: column; justify-content: center; }
+  .stop h2 { font-size: 7cqi; margin: 0; }
+  .stop p { font-size: 2.7cqi; line-height: 1.35; color: var(--muted); margin: 2cqh 0 0; max-width: 48cqi; }
+  .stripes {
+    position: absolute;
+    right: 0; top: 0;
+    width: 22cqi;
+    height: 32cqh;
+    background: repeating-linear-gradient(-32deg, var(--red) 0 1.55cqi, transparent 1.55cqi 3.4cqi);
+    pointer-events: none;
+  }
+  .stripes.below { top: 8.5cqh; height: 24cqh; }
+  .pad h2 { font-size: 12cqi; }
+  .pad p { font-size: 2.9cqi; max-width: 68cqi; color: var(--muted); line-height: 1.35; margin: 2cqh 0 0; }
+  .phrase { font-size: 5.6cqi; margin-top: 3cqh; }
+  .now-dark {
+    margin-top: 3cqh;
+    font-size: 2cqi;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--red);
+  }
+
+  .studio { background: #fff; }
+  .backword {
+    position: absolute;
+    left: 4.2cqi;
+    top: 22cqh;
+    font-size: 16cqi;
+    z-index: 1;
+    margin: 0;
+  }
+  .subject {
+    position: absolute;
+    z-index: 2;
+    object-fit: contain;
+    pointer-events: none;
+    transform-origin: 50% 70%;
+  }
+  .subject.cat { right: -6cqi; bottom: 0; height: 88cqh; width: 54cqi; }
+  .subject.dog { inset: 0; width: 100%; height: 100%; object-position: center bottom; }
+  .subject.human { right: 0; bottom: 0; width: 48%; height: 100%; object-position: right bottom; }
+  .slide.on .subject { animation: arrive 8.5s cubic-bezier(.16, 1, .3, 1) both; }
+  @keyframes arrive {
+    0% { transform: translateX(-90%) rotateY(-48deg); }
+    14% { transform: translateX(0) rotateY(18deg); }
+    42% { transform: translateX(0) rotateY(-16deg); }
+    70% { transform: translateX(0) rotateY(14deg); }
+    100% { transform: translateX(0) rotateY(-6deg); }
+  }
+  .hero-foot {
+    position: absolute;
+    z-index: 4;
+    left: 4.2cqi;
+    bottom: 11cqh;
+    display: flex;
+    gap: 3.2cqi;
+    align-items: flex-end;
+    max-width: none;
+    font-size: 2.05cqi;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .stage { position: relative; background: #fff; overflow: hidden; }
+  .stagelabel {
+    position: absolute;
+    z-index: 4;
+    left: 3cqi;
+    bottom: 3.2cqh;
+    color: var(--red);
+    font-size: 2.2cqi;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  .humancopy { position: absolute; z-index: 4; left: 4cqi; top: 8cqh; width: 30cqi; }
+  .humancopy h2 { font-size: 7cqi; margin: 0; }
+  .humancopy p { font-size: 2.3cqi; line-height: 1.35; color: var(--muted); margin: 1.6cqh 0 0; }
+
+  .qa { position: absolute; inset: 13cqh 5cqi 9cqh; display: grid; grid-template-columns: .7fr 1.3fr; gap: 4cqi; align-items: center; }
+  .qa h2 { font-size: 11cqi; }
+  .rows { display: flex; flex-direction: column; }
+  .rows div { display: grid; grid-template-columns: 16cqi 1fr; gap: 2cqi; padding: 1.7cqh 0; border-top: 0.25cqh solid #ddd; font-size: 2.35cqi; line-height: 1.3; }
+  .rows div:last-child { border-bottom: 0.25cqh solid #ddd; }
+  .rows b { color: var(--red); font-stretch: condensed; letter-spacing: -0.02em; text-transform: uppercase; }
+
+  [data-a] { opacity: 0; }
+  .slide.on [data-a] { animation: up .55s cubic-bezier(.16, 1, .3, 1) both; animation-delay: var(--d, 0s); }
+  @keyframes up { from { opacity: 0; transform: translateY(2.2cqh); } to { opacity: 1; transform: none; } }
+
+  .hint {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,.72);
+    font-size: 13px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    z-index: 5;
+  }
+
+  @media print {
+    html, body { background: #fff; height: auto; overflow: visible; }
+    .deck { position: static; display: block; }
+    .frame { width: auto; height: auto; overflow: visible; box-shadow: none; }
+    .hint { display: none !important; }
+    .slide, .slide.on {
+      position: relative;
+      visibility: visible !important;
+      width: 13.333in;
+      height: 7.5in;
+      page-break-after: always;
+      break-after: page;
+      animation: none !important;
+      clip-path: none !important;
+    }
+    .slide:last-child { page-break-after: auto; break-after: auto; }
+    .redcard, .giant .mega, .subject, [data-a] {
+      animation: none !important;
+      transform: none !important;
+      opacity: 1 !important;
+      clip-path: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+  <div class="frame" id="frame">
+
+    <section class="slide on on-red" data-enter="rise">
+      <div class="sheet">
+        <div class="redcard">
+          <div class="lead" data-a style="--d:.45s">Ситуационная задача</div>
+          <h1 class="mega" data-a style="--d:.52s">VetID</h1>
+          <div class="meta" data-a style="--d:.66s">
+            <span>Ветеринарная<br>клиника</span>
+            <b>Face ID</b>
+            <span>Без<br>сервера</span>
+          </div>
+        </div>
+      </div>
+      <div class="num">01</div>
+    </section>
+
+    <section class="slide" data-enter="wipe">
+      <div class="top"><span>VetID</span><i></i><span>Клиника</span></div>
+      <div class="split">
+        <div class="col">
+          <div class="kicker" data-a>Заказ</div>
+          <h2 class="mega red" data-a style="--d:.08s">Вход</h2>
+          <p data-a style="--d:.16s">Свой Face ID на ресепшене. Камера решает, кто подошёл. Снимок в интернет не уходит.</p>
+        </div>
+        <div class="col ink">
+          <div class="stack">
+            <div class="line" data-a style="--d:.12s">Кошка</div>
+            <div class="line" data-a style="--d:.2s">Собака</div>
+            <div class="rule" data-a style="--d:.28s"></div>
+            <div class="line" data-a style="--d:.34s">Человек <em>— нет</em></div>
+          </div>
+        </div>
+      </div>
+      <div class="num">02</div>
+    </section>
+
+    <section class="slide" data-enter="wipe">
+      <div class="top"><span>VetID</span><i></i><span>Устройство</span></div>
+      <div class="nets">
+        <article>
+          <div class="kicker" data-a>Как устроено</div>
+          <h2 class="mega" data-a style="--d:.06s">Две<br>сети</h2>
+          <p data-a style="--d:.14s">Обе считают на телефоне. Вместе решают, открывать ли дверь.</p>
+        </article>
+        <div class="gap"></div>
+        <article>
+          <div data-a style="--d:.1s">
+            <div class="idx">01</div>
+            <h3>COCO-SSD</h3>
+            <div class="sub">Детектор. Находит человека, кошку или собаку и рисует рамку.</div>
+          </div>
+          <div data-a style="--d:.22s">
+            <div class="idx">02</div>
+            <h3>MobileNet</h3>
+            <div class="sub">Классификатор. Смотрит морду и называет породу.</div>
+          </div>
+        </article>
+      </div>
+      <div class="num">03</div>
+    </section>
+
+    <section class="slide" data-enter="fly">
+      <div class="giant">
+        <h2 class="mega red"><span class="oh">0</span> байт</h2>
+        <p data-a style="--d:.28s">Фото пациента остаётся в телефоне. Веса нейросети скачиваются один раз, дальше стойка работает офлайн.</p>
+      </div>
+      <div class="num">04</div>
+    </section>
+
+    <section class="slide studio" data-enter="fly">
+      <div class="top"><span>VetID</span><i></i><span>Показ</span></div>
+      <p class="kicker" data-a style="position:absolute;left:4.2cqi;top:12cqh">Переходим в приложение</p>
+      <h2 class="mega red backword" data-a style="--d:.06s">Кошка</h2>
+      <img class="subject cat" src="assets/vetid-cat.png" alt="" />
+      <div class="hero-foot" data-a style="--d:.2s">
+        <span>Мяуканье</span>
+        <b>Порода</b>
+        <span>Талон К · кабинет 1</span>
+      </div>
+      <div class="say">Показать кошку и не листать</div>
+      <div class="num">05</div>
+    </section>
+
+    <section class="slide" data-enter="wipe">
+      <div class="top"><span>VetID</span><i></i><span>Показ</span></div>
+      <div class="half">
+        <div class="copy">
+          <div class="kicker" data-a>Пациент</div>
+          <h2 class="mega" data-a style="--d:.06s">Собака</h2>
+          <ul>
+            <li data-a style="--d:.14s">Гавканье, своя порода, талон С.</li>
+            <li data-a style="--d:.22s">Номера идут по очереди: К-01, С-01.</li>
+            <li data-a style="--d:.3s">Хозяин с питомцем проходит вместе с ним.</li>
+          </ul>
+        </div>
+        <div class="stage">
+          <img class="subject dog" src="assets/vetid-dog.png" alt="" />
+          <span class="stagelabel">Кабинет 2</span>
+        </div>
+      </div>
+      <div class="say">Показать собаку</div>
+      <div class="num">06</div>
+    </section>
+
+    <section class="slide" data-enter="wipe">
+      <div class="stop">
+        <div class="mark" data-a>Стоп</div>
+        <div class="stage">
+          <img class="subject human" src="assets/vetid-human.png" alt="" />
+          <div class="humancopy">
+            <h2 class="mega" data-a style="--d:.1s">Человек</h2>
+            <p data-a style="--d:.18s">Доступ запрещён. Система не мяукает, а говорит: «Добро пожаловать. Клиника принимает кошек и собак».</p>
+          </div>
+        </div>
+      </div>
+      <div class="say light">Показать человека</div>
+      <div class="num">07</div>
+    </section>
+
+    <section class="slide" data-enter="wipe">
+      <div class="top"><span>VetID</span><i></i><span>Настройки</span></div>
+      <div class="pad">
+        <div class="kicker" data-a>Шестерёнка</div>
+        <h2 class="mega red" data-a style="--d:.06s">Турникет</h2>
+        <p data-a style="--d:.16s">Кнопку «сканировать» больше не нажимаем. Телефон сам снимает того, кто подошёл, и говорит решение.</p>
+        <h3 class="mega phrase" data-a style="--d:.28s">Проходите.<br>Следующий.</h3>
+        <p class="now-dark" data-a style="--d:.36s">Включить и дать сработать самому</p>
+      </div>
+      <div class="stripes below"></div>
+      <div class="num">08</div>
+    </section>
+
+    <section class="slide" data-enter="wipe">
+      <div class="top"><span>VetID</span><i></i><span>Ответы</span></div>
+      <div class="qa">
+        <h2 class="mega" data-a>Вопросы</h2>
+        <div class="rows">
+          <div data-a style="--d:.08s"><b>Сервер</b><span>Считает процессор телефона, фото в облако не уходит.</span></div>
+          <div data-a style="--d:.14s"><b>Face ID</b><span>Узнаём вид, не имя. Порода уточняет пациента.</span></div>
+          <div data-a style="--d:.2s"><b>Ошибка</b><span>Низкая уверенность — «не опознан», просим ещё раз.</span></div>
+          <div data-a style="--d:.26s"><b>Талон</b><span>Счётчик смены в телефоне. К — кабинет 1, С — кабинет 2.</span></div>
+        </div>
+      </div>
+      <div class="num">09</div>
+    </section>
+
+    <section class="slide on-red" data-enter="rise">
+      <div class="sheet">
+        <div class="redcard">
+          <div class="lead" data-a style="--d:.42s">Заказ закрыт</div>
+          <h2 class="mega" data-a style="--d:.5s">Спасибо</h2>
+          <div class="meta" data-a style="--d:.64s">
+            <span>Порода<br>и талон</span>
+            <b>Офлайн</b>
+            <span>Человек<br>без питомца — нет</span>
+          </div>
+        </div>
+      </div>
+      <div class="num">10</div>
+    </section>
+
+  </div>
+</div>
+<div class="hint" id="hint">Клик или стрелка вправо</div>
+<script>
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var i = 0;
+  function show(n, dir) {
+    if (n < 0 || n >= slides.length || n === i) return;
+    slides[i].classList.remove('on', 'back');
+    i = n;
+    var s = slides[i];
+    s.classList.remove('on', 'back');
+    if (dir < 0) s.classList.add('back');
+    void s.offsetWidth;
+    s.classList.add('on');
+    var hint = document.getElementById('hint');
+    if (hint) hint.style.display = 'none';
+  }
+  function next() { show(i + 1, 1); }
+  function prev() { show(i - 1, -1); }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'Backspace') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0, -1); }
+    else if (e.key === 'End') { e.preventDefault(); show(slides.length - 1, 1); }
+  });
+  document.getElementById('frame').addEventListener('click', function (e) {
+    var r = e.currentTarget.getBoundingClientRect();
+    if (e.clientX - r.left < r.width * 0.28) prev();
+    else next();
+  });
+</script>
+</body>
+</html>
